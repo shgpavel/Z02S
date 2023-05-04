@@ -19,40 +19,82 @@ limitations under the License.
 #include <regex>
 #include <stdexcept>
 
-std::string parse_phone(std::string input) {
 
-    input = std::regex_replace(input, std::regex("\\D+"), "");
+enum parser_flags {
+    Phone,
+    Date,
+    Fullname,
+    Nothing
+};
+
+
+std::string parser(std::string input, parser_flags flag) {
     
-    if (input.length() == 11) {
-    return input;
-    } else {
-        throw std::invalid_argument("Invalid phone number");
+    if (flag == Phone) {
+        input = std::regex_replace(input, std::regex("\\D+"), "");
+        if (input.length() == 11) {
+            return input;
+        } else {
+            throw std::invalid_argument("Invalid phone number");
+        }
     }
-}
-
-std::string parse_birthday(std::string date) {
     
+    if (flag == Date) {
+        input = std::regex_replace(input, std::regex("\\D+"), "");
+        if (input.length() == 8) {
+            return input;
+        } else {
+            throw std::invalid_argument("Invalid date");
+        }
+    }
+    
+    if (flag == Fullname) {
+        std::regex re(R"(([^\s]+)\s+([^\s]+)\s+([^\s]+))");
+        std::smatch match;
+        
+        if (std::regex_search(input, match, re)) {
+            return match[1].str() + "0" + match[2].str() + "0" + match[3].str();
+        } else {
+            throw std::invalid_argument("Invalid full name format");
+        }
+    }
+
+    if (flag == Nothing) {
+        throw std::invalid_argument("Invalid function usage");
+    }
 
 }
 
 int main(void) {
 
     std::string phone;
-    std::cin >> phone;
+    std::getline(std::cin, phone);
     
     try {
-        std::string digits = parse_phone(phone);
-        std::cout << "Phone: " << digits << std::endl;
+        std::string number = parser(phone, Phone);
+        std::cout << "Phone: " << number << std::endl;
     } catch (const std::invalid_argument& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
     
+
     std::string birthday;
-    std::cin >> birthday;
+    std::getline(std::cin, birthday);
 
     try {
-        std::string digits = parse_birthday(birthday);
-        std::cout << "Birthday: " << digits << std::endl;
+        std::string date = parser(birthday, Date);
+        std::cout << "Birthday: " << date << std::endl;
+    } catch (const std::invalid_argument& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+
+
+    std::string fullname;
+    std::getline(std::cin, fullname);
+    
+    try {
+        std::string date = parser(fullname, Fullname);
+        std::cout << "Birthday: " << date << std::endl;
     } catch (const std::invalid_argument& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }

@@ -31,29 +31,50 @@ Person::Person(const std::string& name, const std::string& date, const std::stri
 Person::~Person() {}
 
 std::string Person::operator[] (const std::string& property) const {
-        if (property == "name") {
-            return full_name;
-        } else if(property == "birthday") {
-            return birth_date;
-        } else if(property == "phone") {
-            return phone_number;
-        } else {
-            return "";
-        }
-}
-
-bool Person::satisfiesConditions(const std::string& name_condition, const std::string& date_condition,
-                                 const std::string& phone_condition) const {
-    
-    if ((name_condition != "*" && full_name != name_condition) ||
-    (date_condition != "*" && birth_date != date_condition) ||
-    (phone_condition != "*" && phone_number != phone_condition)) {
-        return false;
+    if (property == "name") {
+        return full_name;
+    } else if(property == "birthday") {
+        return birth_date;
+    } else if(property == "phone") {
+        return phone_number;
+    } else {
+        return "";
     }
-    return true;
 }
 
-int Person::daysBeforeBirthday() const {
+
+bool Person::fullname_comparator(const Person& other) const {
+    if (full_name < other.full_name || full_name == "*") {
+        return 1;
+    }
+    return 0;
+}
+
+bool Person::birthday_comparator(const Person& other) const {
+    unsigned birth_year, birth_month, birth_day, birth_year_2, birth_month_2, birth_day_2;
+    if (birth_date == "*") {
+        return 1;
+    } else {
+        sscanf(birth_date.c_str(), "%2u %2u %4u", &birth_day, &birth_month, &birth_year);
+        sscanf(other.birth_date.c_str(), "%2u %2u %4u", &birth_day_2, &birth_month_2, &birth_year_2);
+        if (birth_year < birth_year_2) {
+            return 1;
+        } else if(birth_year == birth_year_2) {
+            if (birth_month < birth_month_2) {
+                return 1;
+            } else if(birth_month == birth_month_2) {
+                if (birth_day < birth_day_2) {
+                    return 1;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+
+unsigned Person::days_before_birthday() const {
+    if (birth_date.find("*") != std::string::npos) { return 0; }
     time_t now = time(0);
     struct tm* current_time = localtime(&now);
 
@@ -64,7 +85,7 @@ int Person::daysBeforeBirthday() const {
     int birth_year, birth_month, birth_day;
     sscanf(birth_date.c_str(), "%2d %2d %4d", &birth_day, &birth_month, &birth_year);
 
-    int days_until_birthday = 0;
+    unsigned days_until_birthday = 0;
 
     if (current_month < birth_month || (current_month == birth_month && current_day < birth_day)) {
         struct tm next_birthday = {0};
@@ -96,8 +117,8 @@ std::string parser(std::string input, unsigned flag) {
         return input.substr(0, 11);
     } else if (flag % 3 == 2) {
 
-        int birth_year, birth_month, birth_day;
-        sscanf(input.c_str(), "%2d %2d %4d", &birth_day, &birth_month, &birth_year);
+        int birth_month, birth_day;
+        sscanf(input.c_str(), "%2d %2d", &birth_day, &birth_month);
         if (birth_day > 31 || birth_day < 1) {
             throw std::runtime_error("Day can't be greater 31 and less than 1");
         }
@@ -105,11 +126,7 @@ std::string parser(std::string input, unsigned flag) {
         if (birth_month > 12 || birth_month < 1) {
             throw std::runtime_error("Month can't be greater 12 and less than 1");
         }
-
-        if (birth_year > 2023) {
-            throw std::runtime_error("We are'nt working in future");
-        }
-
+       
         input = std::regex_replace(input, std::regex("\\D+"), "");
         return input.substr(0, 8);
     } else if (flag % 3  == 0) {
@@ -132,11 +149,48 @@ void help() {
     std::cout << "load <filename> - загружает объекты из файла" << std::endl;
     std::cout << "save <filename> - сохраняет в файл объекты" << std::endl;
     std::cout << "add - добавить объект (введите '>exit' для завершения)" << std::endl;
-    std::cout << "sort - отсортировать объекты" << std::endl;
-    std::cout << "find <условия> - вывести объекты, удовлетворяющие условиям" << std::endl;
-    std::cout << "delete <условия> - удалить объекты, удовлетворяющие условиям" << std::endl;
+    std::cout << "sort [mode(3, 2)] - отсортировать объекты" << std::endl;
+    std::cout << "find [mode(3, 2, 1)] <условия> - вывести объекты, удовлетворяющие условиям" << std::endl;
+    std::cout << "delete [mode(3, 2, 1)] <условия> - удалить объекты, удовлетворяющие условиям" << std::endl;
     std::cout << "birthday - распечатывает людей с близким днем рождения" << std::endl;
     std::cout << "exit - завершить работу и выйти" << std::endl;
+    std::cout << "спецификатор mode принимает значения 1(номер телефона), 2(дата рождения), 3(ФИО)" << std::endl;
+}
+
+
+
+void sort(std::vector<Person*>& objects, unsigned size, unsigned mode) {
+    if (mode == 3) {
+        unsigned j;
+        for (unsigned i = 1; i < size; ++i) {
+            j = i;
+            while (j > 0 && ((*objects[j]).fullname_comparator((*objects[j - 1])))) {
+                std::swap(objects[j], objects[j - 1]);
+                j--;
+            }
+        }
+    } else if (mode == 2) {
+    unsigned j;
+        for (unsigned i = 1; i < size; ++i) {
+            j = i;
+            while (j > 0 && ((*objects[j]).birthday_comparator((*objects[j - 1])))) {
+                std::swap(objects[j], objects[j - 1]);
+                j--;
+            }
+        }
+    } else if (mode == 1){
+        unsigned j;
+        for (unsigned i = 1; i < size; ++i) {
+            j = i;
+            while (j > 0 && ((*objects[j]).days_before_birthday() < (*objects[j - 1]).days_before_birthday())) {
+                std::swap(objects[j], objects[j - 1]);
+                j--;
+            }
+        }
+        
+    } else {
+        throw std::runtime_error("Такого режима нет");
+    }
 }
 
 void clear(std::vector<Person*>& objects) {
@@ -146,21 +200,51 @@ void clear(std::vector<Person*>& objects) {
     objects.clear();
 }
 
+void find_obj (std::vector<Person*>& objects, std::string condition, unsigned mode) {
+    unsigned flag = 0;
+    for (unsigned i = 0; i < objects.size(); ++i) {
+        if ((mode == 3 && (*objects[i])["name"] == parser(condition, 3)) ||
+                (mode == 2 && (*objects[i])["birthday"] == parser(condition, 2)) ||
+                (mode == 1 && (*objects[i])["phone"] == parser(condition, 1))) {
+            std::cout << (*objects[i])["name"] << " "  <<
+                (*objects[i])["birthday"] << " " <<
+                (*objects[i])["phone"] << std::endl;
+            flag = 1;
+        }
+        }
+    if (flag == 0) {
+        std::cout << "Такой объект не найден" << std::endl;
+    }
+}
+
+void delete_obj (std::vector<Person*>& objects, std::string condition, unsigned mode) {
+    unsigned flag = 0;
+    for (unsigned i = 0; i < objects.size(); ++i) {
+        if ((mode == 3 && (*objects[i])["name"] == parser(condition, 3)) ||
+                (mode == 2 && (*objects[i])["birthday"] == parser(condition, 2)) ||
+                (mode == 1 && (*objects[i])["phone"] == parser(condition, 1))){
+            objects.erase(objects.begin() + i);
+            flag = 1;
+        }
+    }
+    if (flag == 0) {
+        std::cout << "Такой объект не найден" << std::endl;
+    }
+}
+
 
 int main(void) {
     std::vector<Person*> objects;
     
-    /*  objects.push_back(new Person(fullname, birthday, phone)); */
-
     std::string command;
 
     while (true) {
         std::cout << "> ";
         std::getline(std::cin, command);
 
-        if (command == "help") {
+        if (command.substr(0, 4) == "help") {
             help();
-        } else if (command == "clear") {
+        } else if (command.substr(0, 5) == "clear") {
             clear(objects);
         } else if (command.substr(0, 5) == "load ") {
             std::string filename = command.substr(5);
@@ -192,16 +276,18 @@ int main(void) {
             std::ofstream file(filename);
             if (file.is_open()) {
                 for (unsigned i = 0; i < objects.size(); ++i) {
-                    file << (*objects[i])["name"] << std::endl << (*objects[i])["birthday"] << std::endl << (*objects[i])["phone"] << std::endl;
+                    file << (*objects[i])["name"] << std::endl 
+                        << (*objects[i])["birthday"] << std::endl
+                        << (*objects[i])["phone"] << std::endl;
                 }
             file.close();
             } else {
                 std::cout << "Не получилось записать в файл" << std::endl;
             }
-        } else if (command == "add") {
+        } else if (command.substr(0, 3) == "add") {
 
             std::string fullname, birthday, phone;
-            std::cout << "Чтобы добавить человека введите по строчкам имя, дату рождения и номер телефона" << std::endl;
+            std::cout << "Чтобы добавить объект введите по строчкам ФИО, дату рождения и номер телефона" << std::endl;
             std::cout << ">> ";
             std::getline(std::cin, fullname);
             std::cout << ">> ";
@@ -210,21 +296,31 @@ int main(void) {
             std::getline(std::cin, phone);
             objects.push_back(new Person(parser(fullname, 3), parser(birthday, 2), parser(phone, 1)));
             std::cout << std::endl;
-        } else if (command == "print") {
+        } else if (command.substr(0, 5) == "print") {
             for (unsigned i = 0; i < objects.size(); ++i) {
-                std::cout << (*objects[i])["name"] << " " << (*objects[i])["birthday"] << " " << (*objects[i])["phone"] << " " << std::endl;
+                std::cout << (*objects[i])["name"] << " " 
+                    << (*objects[i])["birthday"] << " " 
+                    << (*objects[i])["phone"] << " " << std::endl;
             }
         
-        /*} else if (command == "sort") {
-            sort(list);
+        } else if (command.substr(0, 5) == "sort ") {
+            std::string mode = command.substr(5, 6);
+            sort(objects, objects.size(), std::stoul(mode));
         } else if (command.substr(0, 5) == "find ") {
-            std::string conditions = command.substr(5);
-            find(list, conditions);
+            std::string mode = command.substr(5, 6), conditions;
+            std::cout << "Далее введите выбранный параметр:" << std::endl;
+            std::cout << "~> ";
+            std::getline(std::cin, conditions);
+            find_obj(objects, conditions, std::stoul(mode));
         } else if (command.substr(0, 7) == "delete ") {
-            std::string conditions = command.substr(7);
-            deleteItems(list, conditions);
-        */
-        } else if (command == "exit") {
+            std::string mode = command.substr(7, 8), conditions;
+            std::cout << "Далее введите выбранный параметр:" << std::endl;
+            std::cout << "~> ";
+            std::getline(std::cin, conditions);
+            delete_obj(objects, conditions, std::stoul(mode));
+        } else if (command.substr(0, 8) == "birthday") {
+            sort(objects, objects.size(), 1);
+        } else if (command.substr(0, 4) == "exit") {
             clear(objects);
             break;
         } else {

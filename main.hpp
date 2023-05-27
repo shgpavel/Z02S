@@ -15,10 +15,12 @@ public:
     
     std::string operator[] (const std::string& property) const;
 
-    bool satisfiesConditions(const std::string& name_condition, const std::string& date_condition,
-                             const std::string& phone_condition) const;
 
-    int daysBeforeBirthday() const;
+    bool fullname_comparator(const Person& other) const;
+    
+    bool birthday_comparator(const Person& other) const;
+    
+    unsigned days_before_birthday() const;
 };
 
 #endif

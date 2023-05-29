@@ -18,7 +18,8 @@ limitations under the License.
 #include <string>
 #include <regex>
 #include <fstream>
-#include <vector>
+#include <list>
+#include <iterator>
 #include <stdexcept>
 #include <ctime>
 
@@ -106,10 +107,77 @@ unsigned Person::days_before_birthday() const {
     return days_until_birthday;
 }
 
+template<typename T>
+ListWrapper<T>::ListWrapper() {}
+
+template<typename T>
+void ListWrapper<T>::push_back(const T& value) {
+    myList.push_back(value);
+}
+
+template<typename T>
+T& ListWrapper<T>::operator[](size_t index) {
+    auto it = myList.begin();
+    std::advance(it, index);
+    return *it;
+}
+
+template<typename T>
+const T& ListWrapper<T>::operator[](size_t index) const {
+    auto it = myList.begin();
+    std::advance(it, index);
+    return *it;
+}
+
+template<typename T>
+void ListWrapper<T>::clear() {
+    std::for_each(myList.begin(), myList.end(), [](T obj) {
+        delete obj;
+    });
+    myList.clear();
+}
+
+template<typename T>
+typename std::list<T>::iterator ListWrapper<T>::begin() {
+    return myList.begin();
+}
+
+template<typename T>
+typename std::list<T>::const_iterator ListWrapper<T>::begin() const {
+    return myList.begin();
+}
+
+template<typename T>
+size_t ListWrapper<T>::size() const {
+    return myList.size();
+}
+
+
+template<typename T>
+ListWrapper<T>& ListWrapper<T>::operator=(const ListWrapper<T>& other) {
+    if (this != &other) {
+        myList = other.myList;
+    }
+    return *this;
+}
+
+template<typename T>
+typename std::list<T>::iterator ListWrapper<T>::end() {
+    return myList.end();
+}
+
+template<typename T>
+typename std::list<T>::const_iterator ListWrapper<T>::end() const {
+    return myList.end();
+}
+
+template<typename T>
+void ListWrapper<T>::erase(typename std::list<T>::iterator it) {
+    myList.erase(it);
+}
 
 
 std::string parser(std::string input, unsigned flag) {
-    
     if (input == "*") {
         return "*";
     } else if (flag % 3 == 1) {
@@ -119,12 +187,21 @@ std::string parser(std::string input, unsigned flag) {
 
         int birth_month, birth_day;
         sscanf(input.c_str(), "%2d %2d", &birth_day, &birth_month);
-        if (birth_day > 31 || birth_day < 1) {
-            throw std::runtime_error("Day can't be greater 31 and less than 1");
+        if (birth_month == 2){
+            if (birth_day > 29 || birth_day < 1) {
+                throw std::invalid_argument("No such day in this month");
+            }
+        } else if (birth_month == 1 || birth_month == 3 || birth_month == 5 
+                || birth_month == 7 || birth_month == 8 || birth_month == 10 || birth_month == 12) {
+            if (birth_day > 31 || birth_day < 1) {
+                throw std::invalid_argument("No such day in this month");
+            }
+        } else if (birth_day > 30 || birth_day < 1) {
+            throw std::invalid_argument("No such day in this month");
         }
         
         if (birth_month > 12 || birth_month < 1) {
-            throw std::runtime_error("Month can't be greater 12 and less than 1");
+            throw std::invalid_argument("Month can't be greater 12 and less than 1");
         }
        
         input = std::regex_replace(input, std::regex("\\D+"), "");
@@ -136,7 +213,7 @@ std::string parser(std::string input, unsigned flag) {
         if (std::regex_search(input, match, re)) {
             return match[1].str() + " " + match[2].str() + " " + match[3].str();
         } else {
-            throw std::runtime_error("Invalid fullname format");
+            throw std::invalid_argument("Invalid fullname format");
         }
     }
 }
@@ -159,7 +236,7 @@ void help() {
 
 
 
-void sort(std::vector<Person*>& objects, unsigned size, unsigned mode) {
+void sort(ListWrapper<Person*>& objects, unsigned size, unsigned mode) {
     if (mode == 3) {
         unsigned j;
         for (unsigned i = 1; i < size; ++i) {
@@ -189,18 +266,12 @@ void sort(std::vector<Person*>& objects, unsigned size, unsigned mode) {
         }
         
     } else {
-        throw std::runtime_error("Такого режима нет");
+        throw std::invalid_argument("Такого режима нет");
     }
 }
 
-void clear(std::vector<Person*>& objects) {
-    for (Person* obj : objects) {
-        delete obj;
-    }
-    objects.clear();
-}
 
-void find_obj (std::vector<Person*>& objects, std::string condition, unsigned mode) {
+void find_obj (ListWrapper<Person*>& objects, std::string condition, unsigned mode) {
     unsigned flag = 0;
     for (unsigned i = 0; i < objects.size(); ++i) {
         if ((mode == 3 && (*objects[i])["name"] == parser(condition, 3)) ||
@@ -216,15 +287,33 @@ void find_obj (std::vector<Person*>& objects, std::string condition, unsigned mo
         std::cout << "Такой объект не найден" << std::endl;
     }
 }
-
-void delete_obj (std::vector<Person*>& objects, std::string condition, unsigned mode) {
-    unsigned flag = 0;
+/*
+void delete_obj (ListWrapper<Person*>& objects, std::string condition, unsigned mode, unsigned flag) {
     for (unsigned i = 0; i < objects.size(); ++i) {
         if ((mode == 3 && (*objects[i])["name"] == parser(condition, 3)) ||
                 (mode == 2 && (*objects[i])["birthday"] == parser(condition, 2)) ||
                 (mode == 1 && (*objects[i])["phone"] == parser(condition, 1))){
-            objects.erase(objects.begin() + i);
+            objects.erase(std::advance(objects.begin(), i));
             flag = 1;
+            delete_obj(objects, condition, mode, flag);
+        }
+    }
+    if (flag == 0) {
+        std::cout << "Такой объект не найден" << std::endl;
+    }
+}
+*/
+void delete_obj(ListWrapper<Person*>& objects, std::string condition, unsigned mode, unsigned flag) {
+    for (auto it = objects.begin(); it != objects.end(); ) {
+        if (((mode == 3) && ((*it)["name"] == parser(condition, 3))) ||
+            ((mode == 2) && ((*it)["birthday"] == parser(condition, 2))) ||
+            ((mode == 1) && ((*it)["phone"] == parser(condition, 1)))) {
+            delete *it;
+            objects.erase(it);
+            delete_obj(objects, condition, mode, flag);
+            flag = 1;
+        } else {
+            ++it;
         }
     }
     if (flag == 0) {
@@ -232,9 +321,8 @@ void delete_obj (std::vector<Person*>& objects, std::string condition, unsigned 
     }
 }
 
-
 int main(void) {
-    std::vector<Person*> objects;
+    ListWrapper<Person*> objects;
     
     std::string command;
 
@@ -245,7 +333,7 @@ int main(void) {
         if (command.substr(0, 4) == "help") {
             help();
         } else if (command.substr(0, 5) == "clear") {
-            clear(objects);
+            objects.clear();
         } else if (command.substr(0, 5) == "load ") {
             std::string filename = command.substr(5);
             std::ifstream file(filename);
@@ -294,7 +382,11 @@ int main(void) {
             std::getline(std::cin, birthday);
             std::cout << ">> ";
             std::getline(std::cin, phone);
+            try {
             objects.push_back(new Person(parser(fullname, 3), parser(birthday, 2), parser(phone, 1)));
+            } catch (const std::invalid_argument& e) {
+                std::cerr << "Error: " << e.what() << std::endl;
+            }
             std::cout << std::endl;
         } else if (command.substr(0, 5) == "print") {
             for (unsigned i = 0; i < objects.size(); ++i) {
@@ -311,17 +403,21 @@ int main(void) {
             std::cout << "Далее введите выбранный параметр:" << std::endl;
             std::cout << "~> ";
             std::getline(std::cin, conditions);
-            find_obj(objects, conditions, std::stoul(mode));
+            try {
+                find_obj(objects, conditions, std::stoul(mode));
+            } catch(const std::invalid_argument& e) {
+                std::cerr << "Error: " << e.what() << std::endl;
+            }
         } else if (command.substr(0, 7) == "delete ") {
             std::string mode = command.substr(7, 8), conditions;
             std::cout << "Далее введите выбранный параметр:" << std::endl;
             std::cout << "~> ";
             std::getline(std::cin, conditions);
-            delete_obj(objects, conditions, std::stoul(mode));
+            delete_obj(objects, conditions, std::stoul(mode), 0);
         } else if (command.substr(0, 8) == "birthday") {
             sort(objects, objects.size(), 1);
         } else if (command.substr(0, 4) == "exit") {
-            clear(objects);
+            objects.clear();
             break;
         } else {
             std::cout << "Неверная команда. Введите 'help' для списка команд." << std::endl;

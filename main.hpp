@@ -38,7 +38,7 @@ public:
     size_t size() const;
 
     void clear();
-    //void erase(typename std::list<T>::iterator it);
+    void erase(typename std::list<T>::iterator it);
 
     ListWrapper<T>& operator=(const ListWrapper<T>& other);
     typename std::list<T>::iterator end();

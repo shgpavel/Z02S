@@ -131,9 +131,9 @@ const T& ListWrapper<T>::operator[](size_t index) const {
 
 template<typename T>
 void ListWrapper<T>::clear() {
-    /*std::for_each(myList.begin(), myList.end(), [](T obj) {
+    std::for_each(myList.begin(), myList.end(), [](T obj) {
         delete obj;
-    });*/
+    });
     myList.clear();
 }
 
@@ -162,11 +162,10 @@ typename std::list<T>::iterator ListWrapper<T>::end() {
     return myList.end();
 }
 
-/*
 template<typename T>
 void ListWrapper<T>::erase(typename std::list<T>::iterator it) {
     myList.erase(it);
-}*/
+}
 
 
 std::string parser(std::string input, unsigned flag) {
@@ -305,6 +304,7 @@ void delete_obj (ListWrapper<Person*>& objects, std::string condition, unsigned 
         if ((mode == 3 && (*objects[i])["name"] == parser(condition, 3)) ||
                 (mode == 2 && (*objects[i])["birthday"] == parser(condition, 2)) ||
                 (mode == 1 && (*objects[i])["phone"] == parser(condition, 1))){
+            delete *(std::next(objects.begin(), i));
             objects.erase(std::next(objects.begin(), i));
             flag = 1;
             delete_obj(objects, condition, mode, flag);
@@ -407,7 +407,7 @@ int main(void) {
             std::cout << "Далее введите выбранный параметр:" << std::endl;
             std::cout << "~> ";
             std::getline(std::cin, conditions);
-            //delete_obj(objects, conditions, std::stoul(mode), 0);
+            delete_obj(objects, conditions, std::stoul(mode), 0);
         } else if (command.substr(0, 8) == "birthday") {
             sort(objects, objects.size(), 1);
         } else if (command.substr(0, 4) == "exit") {

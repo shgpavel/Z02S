@@ -34,16 +34,14 @@ public:
     const T& operator[](size_t index) const;
 
     typename std::list<T>::iterator begin();
-    typename std::list<T>::const_iterator begin() const;
 
     size_t size() const;
 
     void clear();
-    void erase(typename std::list<T>::iterator it);
+    //void erase(typename std::list<T>::iterator it);
 
     ListWrapper<T>& operator=(const ListWrapper<T>& other);
     typename std::list<T>::iterator end();
-    typename std::list<T>::const_iterator end() const;
 private:
     std::list<T> myList;
 };

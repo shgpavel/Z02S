@@ -131,9 +131,9 @@ const T& ListWrapper<T>::operator[](size_t index) const {
 
 template<typename T>
 void ListWrapper<T>::clear() {
-    std::for_each(myList.begin(), myList.end(), [](T obj) {
+    /*std::for_each(myList.begin(), myList.end(), [](T obj) {
         delete obj;
-    });
+    });*/
     myList.clear();
 }
 
@@ -142,10 +142,6 @@ typename std::list<T>::iterator ListWrapper<T>::begin() {
     return myList.begin();
 }
 
-template<typename T>
-typename std::list<T>::const_iterator ListWrapper<T>::begin() const {
-    return myList.begin();
-}
 
 template<typename T>
 size_t ListWrapper<T>::size() const {
@@ -166,15 +162,11 @@ typename std::list<T>::iterator ListWrapper<T>::end() {
     return myList.end();
 }
 
-template<typename T>
-typename std::list<T>::const_iterator ListWrapper<T>::end() const {
-    return myList.end();
-}
-
+/*
 template<typename T>
 void ListWrapper<T>::erase(typename std::list<T>::iterator it) {
     myList.erase(it);
-}
+}*/
 
 
 std::string parser(std::string input, unsigned flag) {
@@ -287,15 +279,19 @@ void find_obj (ListWrapper<Person*>& objects, std::string condition, unsigned mo
         std::cout << "Такой объект не найден" << std::endl;
     }
 }
+
+
 /*
-void delete_obj (ListWrapper<Person*>& objects, std::string condition, unsigned mode, unsigned flag) {
-    for (unsigned i = 0; i < objects.size(); ++i) {
-        if ((mode == 3 && (*objects[i])["name"] == parser(condition, 3)) ||
-                (mode == 2 && (*objects[i])["birthday"] == parser(condition, 2)) ||
-                (mode == 1 && (*objects[i])["phone"] == parser(condition, 1))){
-            objects.erase(std::advance(objects.begin(), i));
+void delete_obj(ListWrapper<Person*>& objects, std::string condition, unsigned mode, unsigned flag) {
+    for (iterator it = objects.begin(); it != objects.end(); ) {
+        if ((mode == 3 && (*it)["name"] == parser(condition, 3)) ||
+            (mode == 2 && (*it)["birthday"] == parser(condition, 2)) ||
+            (mode == 1 && (*it)["phone"] == parser(condition, 1))) {
+            delete *it;
+            it = objects.erase(it);
             flag = 1;
-            delete_obj(objects, condition, mode, flag);
+        } else {
+            ++it;
         }
     }
     if (flag == 0) {
@@ -303,17 +299,15 @@ void delete_obj (ListWrapper<Person*>& objects, std::string condition, unsigned 
     }
 }
 */
-void delete_obj(ListWrapper<Person*>& objects, std::string condition, unsigned mode, unsigned flag) {
-    for (auto it = objects.begin(); it != objects.end(); ) {
-        if (((mode == 3) && ((*it)["name"] == parser(condition, 3))) ||
-            ((mode == 2) && ((*it)["birthday"] == parser(condition, 2))) ||
-            ((mode == 1) && ((*it)["phone"] == parser(condition, 1)))) {
-            delete *it;
-            objects.erase(it);
-            delete_obj(objects, condition, mode, flag);
+
+void delete_obj (ListWrapper<Person*>& objects, std::string condition, unsigned mode, unsigned flag) {
+    for (unsigned i = 0; i < objects.size(); ++i) {
+        if ((mode == 3 && (*objects[i])["name"] == parser(condition, 3)) ||
+                (mode == 2 && (*objects[i])["birthday"] == parser(condition, 2)) ||
+                (mode == 1 && (*objects[i])["phone"] == parser(condition, 1))){
+            objects.erase(std::next(objects.begin(), i));
             flag = 1;
-        } else {
-            ++it;
+            delete_obj(objects, condition, mode, flag);
         }
     }
     if (flag == 0) {
@@ -413,7 +407,7 @@ int main(void) {
             std::cout << "Далее введите выбранный параметр:" << std::endl;
             std::cout << "~> ";
             std::getline(std::cin, conditions);
-            delete_obj(objects, conditions, std::stoul(mode), 0);
+            //delete_obj(objects, conditions, std::stoul(mode), 0);
         } else if (command.substr(0, 8) == "birthday") {
             sort(objects, objects.size(), 1);
         } else if (command.substr(0, 4) == "exit") {

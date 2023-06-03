@@ -73,6 +73,12 @@ bool Person::birthday_comparator(const Person& other) const {
     return 0;
 }
 
+bool Person::days_before_birthday_comp(const Person& other) {
+    if (this->days_before_birthday() < other.days_before_birthday()) {
+        return 1;
+    }
+    return 0;
+}
 
 unsigned Person::days_before_birthday() const {
     if (birth_date.find("*") != std::string::npos) { return 0; }
@@ -122,12 +128,6 @@ T& ListWrapper<T>::operator[](size_t index) {
     return *it;
 }
 
-template<typename T>
-const T& ListWrapper<T>::operator[](size_t index) const {
-    auto it = myList.begin();
-    std::advance(it, index);
-    return *it;
-}
 
 template<typename T>
 void ListWrapper<T>::clear() {
@@ -162,10 +162,48 @@ typename std::list<T>::iterator ListWrapper<T>::end() {
     return myList.end();
 }
 
+
 template<typename T>
 void ListWrapper<T>::erase(typename std::list<T>::iterator it) {
     myList.erase(it);
 }
+
+template<typename T>
+void ListWrapper<T>::quicksort(typename std::list<T>::iterator begin, typename std::list<T>::iterator end, unsigned mode) {
+    if (begin != end && std::next(begin) != end) {
+            auto pivot = partition(begin, end, mode);
+            quicksort(begin, pivot, mode);
+            quicksort(std::next(pivot), end, mode);
+    }
+}
+
+bool compare(Person* obj1, Person* obj2, unsigned mode) {
+    if (mode == 3) {
+        return obj1->fullname_comparator(*obj2);
+    } else if (mode == 2) {
+        return obj1->birthday_comparator(*obj2);
+    } else if (mode == 1) {
+        return obj1->days_before_birthday_comp(*obj2);
+    }
+
+    return false;
+}
+
+
+
+std::list<Person*>::iterator partition(std::list<Person*>::iterator begin, std::list<Person*>::iterator end, unsigned mode) {
+    auto pivot = std::prev(end);
+    auto i = begin;
+    for (auto j = begin; j != pivot; std::advance(j, 1)) {
+        if (compare(*j, *pivot, mode)) {
+            std::iter_swap(i, j);
+            std::advance(i, 1);
+        }
+    }
+    std::iter_swap(i, pivot);
+    return i;
+}
+
 
 
 std::string parser(std::string input, unsigned flag) {
@@ -227,40 +265,6 @@ void help() {
 
 
 
-void sort(ListWrapper<Person*>& objects, unsigned size, unsigned mode) {
-    if (mode == 3) {
-        unsigned j;
-        for (unsigned i = 1; i < size; ++i) {
-            j = i;
-            while (j > 0 && ((*objects[j]).fullname_comparator((*objects[j - 1])))) {
-                std::swap(objects[j], objects[j - 1]);
-                j--;
-            }
-        }
-    } else if (mode == 2) {
-    unsigned j;
-        for (unsigned i = 1; i < size; ++i) {
-            j = i;
-            while (j > 0 && ((*objects[j]).birthday_comparator((*objects[j - 1])))) {
-                std::swap(objects[j], objects[j - 1]);
-                j--;
-            }
-        }
-    } else if (mode == 1){
-        unsigned j;
-        for (unsigned i = 1; i < size; ++i) {
-            j = i;
-            while (j > 0 && ((*objects[j]).days_before_birthday() < (*objects[j - 1]).days_before_birthday())) {
-                std::swap(objects[j], objects[j - 1]);
-                j--;
-            }
-        }
-        
-    } else {
-        throw std::invalid_argument("Такого режима нет");
-    }
-}
-
 
 void find_obj (ListWrapper<Person*>& objects, std::string condition, unsigned mode) {
     unsigned flag = 0;
@@ -280,24 +284,6 @@ void find_obj (ListWrapper<Person*>& objects, std::string condition, unsigned mo
 }
 
 
-/*
-void delete_obj(ListWrapper<Person*>& objects, std::string condition, unsigned mode, unsigned flag) {
-    for (iterator it = objects.begin(); it != objects.end(); ) {
-        if ((mode == 3 && (*it)["name"] == parser(condition, 3)) ||
-            (mode == 2 && (*it)["birthday"] == parser(condition, 2)) ||
-            (mode == 1 && (*it)["phone"] == parser(condition, 1))) {
-            delete *it;
-            it = objects.erase(it);
-            flag = 1;
-        } else {
-            ++it;
-        }
-    }
-    if (flag == 0) {
-        std::cout << "Такой объект не найден" << std::endl;
-    }
-}
-*/
 
 void delete_obj (ListWrapper<Person*>& objects, std::string condition, unsigned mode, unsigned flag) {
     for (unsigned i = 0; i < objects.size(); ++i) {
@@ -390,9 +376,19 @@ int main(void) {
             }
         
         } else if (command.substr(0, 5) == "sort ") {
-            std::string mode = command.substr(5, 6);
-            sort(objects, objects.size(), std::stoul(mode));
-        } else if (command.substr(0, 5) == "find ") {
+            
+            try {
+                unsigned mode = std::stoul(command.substr(5, 6));
+                if (mode == 2 || mode == 3) {
+                    objects.quicksort(objects.begin(), objects.end(), mode);
+                } else {
+                    std::cout << "Неправильный режим попробуйте ещё раз" << std::endl;
+                }
+           } catch(const std::invalid_argument& e) {
+                std::cerr << "Error: " << e.what() << std::endl;
+           }
+
+       } else if (command.substr(0, 5) == "find ") {
             std::string mode = command.substr(5, 6), conditions;
             std::cout << "Далее введите выбранный параметр:" << std::endl;
             std::cout << "~> ";
@@ -409,7 +405,7 @@ int main(void) {
             std::getline(std::cin, conditions);
             delete_obj(objects, conditions, std::stoul(mode), 0);
         } else if (command.substr(0, 8) == "birthday") {
-            sort(objects, objects.size(), 1);
+            objects.quicksort(objects.begin(), objects.end(), 1);
         } else if (command.substr(0, 4) == "exit") {
             objects.clear();
             break;

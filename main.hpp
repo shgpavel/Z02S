@@ -16,6 +16,8 @@ public:
     std::string operator[] (const std::string& property) const;
 
 
+    bool days_before_birthday_comp(const Person& other);
+
     bool fullname_comparator(const Person& other) const;
     
     bool birthday_comparator(const Person& other) const;
@@ -31,7 +33,6 @@ public:
     void push_back(const T& value);
 
     T& operator[](size_t index);
-    const T& operator[](size_t index) const;
 
     typename std::list<T>::iterator begin();
 
@@ -42,6 +43,10 @@ public:
 
     ListWrapper<T>& operator=(const ListWrapper<T>& other);
     typename std::list<T>::iterator end();
+
+    void quicksort(typename std::list<T>::iterator, typename std::list<T>::iterator, unsigned);
+
+
 private:
     std::list<T> myList;
 };

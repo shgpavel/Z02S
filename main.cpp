@@ -18,7 +18,8 @@ limitations under the License.
 #include <string>
 #include <regex>
 #include <fstream>
-#include <vector>
+#include <list>
+#include <iterator>
 #include <stdexcept>
 #include <ctime>
 
@@ -72,6 +73,12 @@ bool Person::birthday_comparator(const Person& other) const {
     return 0;
 }
 
+bool Person::days_before_birthday_comp(const Person& other) {
+    if (this->days_before_birthday() < other.days_before_birthday()) {
+        return 1;
+    }
+    return 0;
+}
 
 unsigned Person::days_before_birthday() const {
     if (birth_date.find("*") != std::string::npos) { return 0; }
@@ -106,10 +113,100 @@ unsigned Person::days_before_birthday() const {
     return days_until_birthday;
 }
 
+template<typename T>
+ListWrapper<T>::ListWrapper() {}
+
+template<typename T>
+void ListWrapper<T>::push_back(const T& value) {
+    myList.push_back(value);
+}
+
+template<typename T>
+T& ListWrapper<T>::operator[](size_t index) {
+    auto it = myList.begin();
+    std::advance(it, index);
+    return *it;
+}
+
+
+template<typename T>
+void ListWrapper<T>::clear() {
+    std::for_each(myList.begin(), myList.end(), [](T obj) {
+        delete obj;
+    });
+    myList.clear();
+}
+
+template<typename T>
+typename std::list<T>::iterator ListWrapper<T>::begin() {
+    return myList.begin();
+}
+
+
+template<typename T>
+size_t ListWrapper<T>::size() const {
+    return myList.size();
+}
+
+
+template<typename T>
+ListWrapper<T>& ListWrapper<T>::operator=(const ListWrapper<T>& other) {
+    if (this != &other) {
+        myList = other.myList;
+    }
+    return *this;
+}
+
+template<typename T>
+typename std::list<T>::iterator ListWrapper<T>::end() {
+    return myList.end();
+}
+
+
+template<typename T>
+void ListWrapper<T>::erase(typename std::list<T>::iterator it) {
+    myList.erase(it);
+}
+
+template<typename T>
+void ListWrapper<T>::quicksort(typename std::list<T>::iterator begin, typename std::list<T>::iterator end, unsigned mode) {
+    if (begin != end && std::next(begin) != end) {
+            auto pivot = partition(begin, end, mode);
+            quicksort(begin, pivot, mode);
+            quicksort(std::next(pivot), end, mode);
+    }
+}
+
+bool compare(Person* obj1, Person* obj2, unsigned mode) {
+    if (mode == 3) {
+        return obj1->fullname_comparator(*obj2);
+    } else if (mode == 2) {
+        return obj1->birthday_comparator(*obj2);
+    } else if (mode == 1) {
+        return obj1->days_before_birthday_comp(*obj2);
+    }
+
+    return false;
+}
+
+
+
+std::list<Person*>::iterator partition(std::list<Person*>::iterator begin, std::list<Person*>::iterator end, unsigned mode) {
+    auto pivot = std::prev(end);
+    auto i = begin;
+    for (auto j = begin; j != pivot; std::advance(j, 1)) {
+        if (compare(*j, *pivot, mode)) {
+            std::iter_swap(i, j);
+            std::advance(i, 1);
+        }
+    }
+    std::iter_swap(i, pivot);
+    return i;
+}
+
 
 
 std::string parser(std::string input, unsigned flag) {
-    
     if (input == "*") {
         return "*";
     } else if (flag % 3 == 1) {
@@ -119,12 +216,21 @@ std::string parser(std::string input, unsigned flag) {
 
         int birth_month, birth_day;
         sscanf(input.c_str(), "%2d %2d", &birth_day, &birth_month);
-        if (birth_day > 31 || birth_day < 1) {
-            throw std::runtime_error("Day can't be greater 31 and less than 1");
+        if (birth_month == 2){
+            if (birth_day > 29 || birth_day < 1) {
+                throw std::invalid_argument("No such day in this month");
+            }
+        } else if (birth_month == 1 || birth_month == 3 || birth_month == 5 
+                || birth_month == 7 || birth_month == 8 || birth_month == 10 || birth_month == 12) {
+            if (birth_day > 31 || birth_day < 1) {
+                throw std::invalid_argument("No such day in this month");
+            }
+        } else if (birth_day > 30 || birth_day < 1) {
+            throw std::invalid_argument("No such day in this month");
         }
         
         if (birth_month > 12 || birth_month < 1) {
-            throw std::runtime_error("Month can't be greater 12 and less than 1");
+            throw std::invalid_argument("Month can't be greater 12 and less than 1");
         }
        
         input = std::regex_replace(input, std::regex("\\D+"), "");
@@ -136,7 +242,7 @@ std::string parser(std::string input, unsigned flag) {
         if (std::regex_search(input, match, re)) {
             return match[1].str() + " " + match[2].str() + " " + match[3].str();
         } else {
-            throw std::runtime_error("Invalid fullname format");
+            throw std::invalid_argument("Invalid fullname format");
         }
     }
 }
@@ -159,48 +265,8 @@ void help() {
 
 
 
-void sort(std::vector<Person*>& objects, unsigned size, unsigned mode) {
-    if (mode == 3) {
-        unsigned j;
-        for (unsigned i = 1; i < size; ++i) {
-            j = i;
-            while (j > 0 && ((*objects[j]).fullname_comparator((*objects[j - 1])))) {
-                std::swap(objects[j], objects[j - 1]);
-                j--;
-            }
-        }
-    } else if (mode == 2) {
-    unsigned j;
-        for (unsigned i = 1; i < size; ++i) {
-            j = i;
-            while (j > 0 && ((*objects[j]).birthday_comparator((*objects[j - 1])))) {
-                std::swap(objects[j], objects[j - 1]);
-                j--;
-            }
-        }
-    } else if (mode == 1){
-        unsigned j;
-        for (unsigned i = 1; i < size; ++i) {
-            j = i;
-            while (j > 0 && ((*objects[j]).days_before_birthday() < (*objects[j - 1]).days_before_birthday())) {
-                std::swap(objects[j], objects[j - 1]);
-                j--;
-            }
-        }
-        
-    } else {
-        throw std::runtime_error("Такого режима нет");
-    }
-}
 
-void clear(std::vector<Person*>& objects) {
-    for (Person* obj : objects) {
-        delete obj;
-    }
-    objects.clear();
-}
-
-void find_obj (std::vector<Person*>& objects, std::string condition, unsigned mode) {
+void find_obj (ListWrapper<Person*>& objects, std::string condition, unsigned mode) {
     unsigned flag = 0;
     for (unsigned i = 0; i < objects.size(); ++i) {
         if ((mode == 3 && (*objects[i])["name"] == parser(condition, 3)) ||
@@ -217,14 +283,17 @@ void find_obj (std::vector<Person*>& objects, std::string condition, unsigned mo
     }
 }
 
-void delete_obj (std::vector<Person*>& objects, std::string condition, unsigned mode) {
-    unsigned flag = 0;
+
+
+void delete_obj (ListWrapper<Person*>& objects, std::string condition, unsigned mode, unsigned flag) {
     for (unsigned i = 0; i < objects.size(); ++i) {
         if ((mode == 3 && (*objects[i])["name"] == parser(condition, 3)) ||
                 (mode == 2 && (*objects[i])["birthday"] == parser(condition, 2)) ||
                 (mode == 1 && (*objects[i])["phone"] == parser(condition, 1))){
-            objects.erase(objects.begin() + i);
+            delete *(std::next(objects.begin(), i));
+            objects.erase(std::next(objects.begin(), i));
             flag = 1;
+            delete_obj(objects, condition, mode, flag);
         }
     }
     if (flag == 0) {
@@ -232,9 +301,8 @@ void delete_obj (std::vector<Person*>& objects, std::string condition, unsigned 
     }
 }
 
-
 int main(void) {
-    std::vector<Person*> objects;
+    ListWrapper<Person*> objects;
     
     std::string command;
 
@@ -245,7 +313,7 @@ int main(void) {
         if (command.substr(0, 4) == "help") {
             help();
         } else if (command.substr(0, 5) == "clear") {
-            clear(objects);
+            objects.clear();
         } else if (command.substr(0, 5) == "load ") {
             std::string filename = command.substr(5);
             std::ifstream file(filename);
@@ -294,7 +362,11 @@ int main(void) {
             std::getline(std::cin, birthday);
             std::cout << ">> ";
             std::getline(std::cin, phone);
+            try {
             objects.push_back(new Person(parser(fullname, 3), parser(birthday, 2), parser(phone, 1)));
+            } catch (const std::invalid_argument& e) {
+                std::cerr << "Error: " << e.what() << std::endl;
+            }
             std::cout << std::endl;
         } else if (command.substr(0, 5) == "print") {
             for (unsigned i = 0; i < objects.size(); ++i) {
@@ -304,24 +376,38 @@ int main(void) {
             }
         
         } else if (command.substr(0, 5) == "sort ") {
-            std::string mode = command.substr(5, 6);
-            sort(objects, objects.size(), std::stoul(mode));
-        } else if (command.substr(0, 5) == "find ") {
+            
+            try {
+                unsigned mode = std::stoul(command.substr(5, 6));
+                if (mode == 2 || mode == 3) {
+                    objects.quicksort(objects.begin(), objects.end(), mode);
+                } else {
+                    std::cout << "Неправильный режим попробуйте ещё раз" << std::endl;
+                }
+           } catch(const std::invalid_argument& e) {
+                std::cerr << "Error: " << e.what() << std::endl;
+           }
+
+       } else if (command.substr(0, 5) == "find ") {
             std::string mode = command.substr(5, 6), conditions;
             std::cout << "Далее введите выбранный параметр:" << std::endl;
             std::cout << "~> ";
             std::getline(std::cin, conditions);
-            find_obj(objects, conditions, std::stoul(mode));
+            try {
+                find_obj(objects, conditions, std::stoul(mode));
+            } catch(const std::invalid_argument& e) {
+                std::cerr << "Error: " << e.what() << std::endl;
+            }
         } else if (command.substr(0, 7) == "delete ") {
             std::string mode = command.substr(7, 8), conditions;
             std::cout << "Далее введите выбранный параметр:" << std::endl;
             std::cout << "~> ";
             std::getline(std::cin, conditions);
-            delete_obj(objects, conditions, std::stoul(mode));
+            delete_obj(objects, conditions, std::stoul(mode), 0);
         } else if (command.substr(0, 8) == "birthday") {
-            sort(objects, objects.size(), 1);
+            objects.quicksort(objects.begin(), objects.end(), 1);
         } else if (command.substr(0, 4) == "exit") {
-            clear(objects);
+            objects.clear();
             break;
         } else {
             std::cout << "Неверная команда. Введите 'help' для списка команд." << std::endl;
